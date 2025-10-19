@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Universal Download</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        input {
+            width: 80%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 25px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #764ba2;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Universal Download</h1>
+        <p>Download videos, music, images from ANY platform!</p>
+        
+        <input type="url" id="urlInput" placeholder="Paste YouTube, TikTok, Facebook link here...">
+        <br>
+        <button onclick="startDownload()">📥 Download Now</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function startDownload() {
+            const url = document.getElementById('urlInput').value;
+            const result = document.getElementById('result');
+            
+            if (!url) {
+                result.innerHTML = '<p style="color: red;">❌ Please enter a URL</p>';
+                return;
+            }
+            
+            result.innerHTML = `
+                <h3>✅ Download Ready!</h3>
+                <p>Processing: <strong>${url}</strong></p>
+                <p>Format: MP4 | Quality: HD</p>
+                <p><em>In real version, your download would start now!</em></p>
+            `;
+        }
+    </script>
+</body>
+</html>
