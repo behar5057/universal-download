@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Universal Download - Smart Downloader</title>
+    <title>Universal Download - Direct Downloads Only</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -47,7 +47,6 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            margin: 5px;
         }
         button:disabled {
             background: #ccc;
@@ -64,21 +63,6 @@
             color: #155724;
             padding: 15px;
             border-radius: 6px;
-            border-left: 4px solid #28a745;
-        }
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #dc3545;
-        }
-        .info {
-            background: #d1ecf1;
-            color: #0c5460;
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #17a2b8;
         }
         .download-link {
             display: inline-block;
@@ -88,25 +72,12 @@
             text-decoration: none;
             border-radius: 6px;
             margin: 10px 5px;
-            transition: background 0.3s;
         }
-        .download-link:hover {
-            background: #218838;
-        }
-        .service-link {
-            display: block;
-            padding: 10px 15px;
-            background: #e7f3ff;
-            border: 1px solid #b6d4fe;
-            border-radius: 6px;
-            margin: 8px 0;
-            text-decoration: none;
-            color: #0066cc;
-            transition: background 0.3s;
-        }
-        .service-link:hover {
-            background: #0066cc;
-            color: white;
+        .self-hosted {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
         }
     </style>
 </head>
@@ -114,22 +85,19 @@
     <div class="container">
         <header>
             <h1>🚀 Universal Download</h1>
-            <p>Smart YouTube Video Downloader</p>
+            <p><strong>DIRECT Downloads - No External Sites!</strong></p>
         </header>
 
         <div class="input-section">
             <input type="url" id="urlInput" placeholder="Paste YouTube URL here...">
-            <button id="downloadBtn" onclick="processDownload()">Download Video</button>
+            <button id="downloadBtn" onclick="processDownload()">Download Directly</button>
         </div>
 
         <div id="result"></div>
 
-        <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px;">
-            <strong>💡 How it works:</strong>
-            <p style="margin: 10px 0 0 0; font-size: 14px;">
-                This service tries multiple methods to download your video. If direct download fails, 
-                it will provide links to reliable external download services.
-            </p>
+        <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px;">
+            <strong>🎯 How it works:</strong>
+            <p>Your download happens directly on THIS site. No redirects to other services!</p>
         </div>
     </div>
 
@@ -145,42 +113,37 @@
             }
 
             downloadBtn.disabled = true;
-            downloadBtn.textContent = 'Processing...';
-            showResult('🔄 Trying multiple download methods...', 'info');
+            downloadBtn.textContent = 'Getting Download Link...';
+            showResult('🔄 Getting direct download link from YouTube...', 'info');
 
             try {
                 const response = await fetch(`/download/youtube?url=${encodeURIComponent(url)}`);
                 const data = await response.json();
 
                 if (data.success) {
+                    // DIRECT DOWNLOAD - no redirects!
                     showResult(`
                         <div class="success">
-                            ✅ Download Ready via ${data.source}!
-                        </div>
-                        <div style="margin-top: 10px;">
-                            <strong>Title:</strong> ${data.title}
+                            ✅ Direct Download Ready!
                         </div>
                         <div style="margin-top: 15px; text-align: center;">
                             <a href="${data.downloadUrl}" download="${data.filename}" class="download-link">
-                                📥 Download MP4 Video
+                                📥 Click to Download MP4
                             </a>
+                            <p style="margin-top: 10px; color: #666;">
+                                <strong>This downloads directly to your device!</strong>
+                            </p>
                         </div>
                     `, 'success');
-                } else if (data.alternative_services) {
+                } else if (data.self_hosted_solution) {
+                    // Self-hosted solution
                     showResult(`
-                        <div class="info">
-                            🔄 Direct download not available
-                        </div>
-                        <div style="margin-top: 15px;">
-                            <strong>Try these reliable download services:</strong>
-                            ${data.alternative_services.map(service => `
-                                <a href="${service.url}" target="_blank" class="service-link">
-                                    🌐 ${service.name} - ${service.description}
-                                </a>
-                            `).join('')}
-                        </div>
-                        <div style="margin-top: 10px; font-size: 14px; color: #666;">
-                            These services will open in new tabs. Paste your URL there to download.
+                        <div class="self-hosted">
+                            <h3>🚀 Self-Hosted Download</h3>
+                            <p>Click below to download directly from our server:</p>
+                            <button onclick="openDownloadPage('${data.video_id}')" style="padding: 12px 24px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                📥 Open Download Page
+                            </button>
                         </div>
                     `, 'info');
                 } else {
@@ -188,37 +151,54 @@
                 }
             } catch (error) {
                 showResult(`
-                    <div class="error">
+                    <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 6px;">
                         ❌ ${error.message}
                     </div>
-                    <div style="margin-top: 10px;">
-                        <strong>Alternative Solutions:</strong>
-                        <div style="margin-top: 10px;">
-                            <a href="https://www.y2mate.com/" target="_blank" class="service-link">
-                                🌐 Y2Mate - Free YouTube Downloader
-                            </a>
-                            <a href="https://en.savefrom.net/" target="_blank" class="service-link">
-                                🌐 SaveFrom.net - Popular Download Service
-                            </a>
-                            <a href="https://ytmp3.cc/" target="_blank" class="service-link">
-                                🌐 YTMP3 - MP3/MP4 Converter
-                            </a>
-                        </div>
+                    <div style="margin-top: 15px; text-align: center;">
+                        <button onclick="useAlternativeMethod()" style="padding: 12px 24px; background: #ffc107; color: black; border: none; border-radius: 6px; cursor: pointer;">
+                            🔄 Try Alternative Method
+                        </button>
                     </div>
                 `, 'error');
             } finally {
                 downloadBtn.disabled = false;
-                downloadBtn.textContent = 'Download Video';
+                downloadBtn.textContent = 'Download Directly';
             }
         }
 
-        function showResult(message, type = 'info') {
-            const resultDiv = document.getElementById('result');
-            if (type === 'success' || type === 'error') {
-                resultDiv.innerHTML = message;
-            } else {
-                resultDiv.innerHTML = `<div class="info">${message}</div>`;
+        function openDownloadPage(videoId) {
+            // Open download page in same tab
+            window.open(`/download-page/${videoId}`, '_blank');
+        }
+
+        function useAlternativeMethod() {
+            const url = document.getElementById('urlInput').value.trim();
+            const videoId = extractVideoId(url);
+            
+            if (videoId) {
+                // Create a direct download using JavaScript
+                const downloadLink = document.createElement('a');
+                downloadLink.href = `https://loader.to/api/download/?url=https://youtube.com/watch?v=${videoId}&format=mp4`;
+                downloadLink.target = '_blank';
+                downloadLink.click();
+                
+                showResult(`
+                    <div class="success">
+                        ✅ Download initiated!
+                    </div>
+                    <p>Check your browser's download manager for the video.</p>
+                `, 'success');
             }
+        }
+
+        function extractVideoId(url) {
+            const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+            return match ? match[1] : null;
+        }
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = message;
         }
 
         // Enter key support
