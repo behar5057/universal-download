@@ -17,37 +17,45 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// YouTube Download Endpoint - IMPROVED VERSION
+// YouTube Download Endpoint - FIXED VERSION
 app.get('/download/youtube', async (req, res) => {
     try {
         let videoUrl = req.query.url;
+        
+        console.log('Received URL:', videoUrl);
         
         if (!videoUrl) {
             return res.status(400).json({ error: 'URL is required' });
         }
 
-        // Clean the URL - remove extra parameters that might cause issues
-        videoUrl = cleanYouTubeUrl(videoUrl);
+        // Clean the URL - extract only the video ID
+        const cleanUrl = extractCleanYouTubeUrl(videoUrl);
+        console.log('Cleaned URL:', cleanUrl);
         
-        console.log('Processing URL:', videoUrl);
-        
-        if (!ytdl.validateURL(videoUrl)) {
+        if (!cleanUrl) {
             return res.status(400).json({ 
                 error: 'Invalid YouTube URL',
-                details: 'Please make sure you copied a valid YouTube video URL'
+                details: 'Could not extract video ID from the URL'
             });
         }
         
-        const info = await ytdl.getInfo(videoUrl);
-        const title = info.videoDetails.title.replace(/[^\w\s]/gi, '') || 'youtube_video';
+        if (!ytdl.validateURL(cleanUrl)) {
+            return res.status(400).json({ 
+                error: 'Invalid YouTube URL',
+                details: 'Please use a standard YouTube video URL'
+            });
+        }
+        
+        const info = await ytdl.getInfo(cleanUrl);
+        const title = info.videoDetails.title.replace(/[^\w\s\-]/gi, '') || 'youtube_video';
         
         const format = req.query.format || 'mp4';
         let downloadUrl;
         
         if (format === 'mp3') {
-            const audioFormat = ytdl.chooseFormat(info.formats, { 
-                quality: 'highestaudio',
-                filter: 'audioonly'
+            const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
+            const audioFormat = ytdl.chooseFormat(audioFormats, { 
+                quality: 'highestaudio'
             });
             
             if (!audioFormat) {
@@ -59,24 +67,31 @@ app.get('/download/youtube', async (req, res) => {
                 success: true,
                 title: title,
                 downloadUrl: downloadUrl,
-                filename: `${title}.mp3`,
+                filename: `${title.substring(0, 50)}.mp3`,
                 type: 'audio'
             });
         } else {
-            const videoFormat = ytdl.chooseFormat(info.formats, { 
+            const videoFormats = ytdl.filterFormats(info.formats, 'videoonly');
+            const videoFormat = ytdl.chooseFormat(videoFormats, { 
                 quality: 'highest'
             });
             
             if (!videoFormat) {
-                return res.status(400).json({ error: 'No video format available for this video' });
+                // Fallback to any format
+                const anyFormat = ytdl.chooseFormat(info.formats, { quality: 'highest' });
+                if (!anyFormat) {
+                    return res.status(400).json({ error: 'No video format available for this video' });
+                }
+                downloadUrl = anyFormat.url;
+            } else {
+                downloadUrl = videoFormat.url;
             }
             
-            downloadUrl = videoFormat.url;
             res.json({
                 success: true,
                 title: title,
                 downloadUrl: downloadUrl,
-                filename: `${title}.mp4`,
+                filename: `${title.substring(0, 50)}.mp4`,
                 type: 'video'
             });
         }
@@ -85,79 +100,62 @@ app.get('/download/youtube', async (req, res) => {
         console.error('YouTube download error:', error);
         res.status(500).json({ 
             error: 'Failed to process YouTube video',
-            details: 'This might be due to video restrictions, region blocking, or invalid URL',
+            details: 'This video might be restricted or unavailable',
             technical: error.message 
         });
     }
 });
 
-// Function to clean YouTube URLs
-function cleanYouTubeUrl(url) {
+// Function to extract clean YouTube URL
+function extractCleanYouTubeUrl(url) {
     try {
-        // Extract just the video ID and create a clean URL
+        // Try to extract video ID using ytdl-core
         const videoId = ytdl.getURLVideoID(url);
-        return `https://www.youtube.com/watch?v=${videoId}`;
+        if (videoId) {
+            return `https://www.youtube.com/watch?v=${videoId}`;
+        }
     } catch (error) {
-        // If extraction fails, return original URL
-        return url;
+        console.log('ytdl-core extraction failed, trying manual extraction');
     }
+    
+    // Manual extraction as fallback
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/,
+        /youtube\.com\/watch\?.*v=([^&]+)/,
+        /youtu\.be\/([^?]+)/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return `https://www.youtube.com/watch?v=${match[1]}`;
+        }
+    }
+    
+    return null;
 }
 
-// TikTok Download Endpoint
-app.get('/download/tiktok', async (req, res) => {
+// Simple YouTube test endpoint
+app.get('/download/simple', async (req, res) => {
     try {
-        const tiktokUrl = req.query.url;
+        const videoUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'; // Rick Astley - Never Gonna Give You Up
+        const info = await ytdl.getInfo(videoUrl);
+        const title = info.videoDetails.title;
         
-        if (!tiktokUrl) {
-            return res.status(400).json({ error: 'URL is required' });
-        }
-        
-        const response = await axios.get(`https://www.tikwm.com/api/?url=${encodeURIComponent(tiktokUrl)}`);
-        const data = response.data;
-        
-        if (data.code !== 0) {
-            return res.status(400).json({ error: 'Failed to fetch TikTok video' });
-        }
+        const format = ytdl.chooseFormat(info.formats, { quality: 'highest' });
         
         res.json({
             success: true,
-            title: data.data?.title || 'TikTok Video',
-            downloadUrl: data.data.play,
-            filename: `tiktok_video.mp4`,
-            type: 'video'
+            title: title,
+            downloadUrl: format.url,
+            filename: `${title}.mp4`,
+            type: 'video',
+            message: 'This is a test video to verify the download works'
         });
         
     } catch (error) {
-        console.error('TikTok download error:', error);
         res.status(500).json({ 
-            error: 'Failed to process TikTok video',
-            details: error.message 
-        });
-    }
-});
-
-// Universal Download Endpoint
-app.get('/download', async (req, res) => {
-    const url = req.query.url;
-    const format = req.query.format || 'mp4';
-    
-    if (!url) {
-        return res.status(400).json({ error: 'URL is required' });
-    }
-    
-    try {
-        if (url.includes('youtube.com') || url.includes('youtu.be')) {
-            const response = await axios.get(`http://localhost:${PORT}/download/youtube?url=${encodeURIComponent(url)}&format=${format}`);
-            res.json(response.data);
-        } else if (url.includes('tiktok.com')) {
-            const response = await axios.get(`http://localhost:${PORT}/download/tiktok?url=${encodeURIComponent(url)}`);
-            res.json(response.data);
-        } else {
-            res.status(400).json({ error: 'Unsupported platform. Try YouTube or TikTok.' });
-        }
-    } catch (error) {
-        res.status(500).json({ 
-            error: 'Download failed',
+            error: 'Test failed',
             details: error.message 
         });
     }
