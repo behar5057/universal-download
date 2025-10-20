@@ -63,12 +63,21 @@
             color: #155724;
             padding: 15px;
             border-radius: 6px;
+            border-left: 4px solid #28a745;
         }
         .error {
             background: #f8d7da;
             color: #721c24;
             padding: 15px;
             border-radius: 6px;
+            border-left: 4px solid #dc3545;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #17a2b8;
         }
         .download-link {
             display: inline-block;
@@ -78,6 +87,28 @@
             text-decoration: none;
             border-radius: 6px;
             margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .download-link:hover {
+            background: #218838;
+        }
+        .format-options {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            justify-content: center;
+        }
+        .format-btn {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .format-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
         }
     </style>
 </head>
@@ -85,53 +116,104 @@
     <div class="container">
         <header>
             <h1>🚀 Universal Download</h1>
-            <p>Direct YouTube downloads - No redirects!</p>
+            <p>Download videos directly from YouTube and TikTok</p>
         </header>
 
         <div class="input-section">
-            <input type="url" id="urlInput" placeholder="Paste YouTube link here...">
+            <input type="url" id="urlInput" placeholder="Paste YouTube or TikTok link here...">
             <button id="downloadBtn" onclick="processDownload()">Download</button>
         </div>
 
+        <div class="format-options">
+            <label class="format-btn active" onclick="selectFormat('mp4')">
+                <input type="radio" name="format" value="mp4" checked> 🎥 MP4 Video
+            </label>
+            <label class="format-btn" onclick="selectFormat('mp3')">
+                <input type="radio" name="format" value="mp3"> 🎵 MP3 Audio
+            </label>
+        </div>
+
         <div id="result"></div>
+
+        <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px;">
+            <strong>💡 Tip:</strong> Try simple YouTube URLs like: <code>https://www.youtube.com/watch?v=VIDEO_ID</code>
+        </div>
     </div>
 
     <script>
+        let currentFormat = 'mp4';
+        
+        function selectFormat(format) {
+            currentFormat = format;
+            document.querySelectorAll('.format-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+        }
+        
         async function processDownload() {
             const url = document.getElementById('urlInput').value.trim();
             const resultDiv = document.getElementById('result');
             const downloadBtn = document.getElementById('downloadBtn');
 
             if (!url) {
-                resultDiv.innerHTML = '<div class="error">❌ Please enter a URL</div>';
+                showResult('❌ Please enter a URL', 'error');
                 return;
             }
 
             downloadBtn.disabled = true;
             downloadBtn.textContent = 'Processing...';
-            resultDiv.innerHTML = '<div>🔄 Processing your download...</div>';
+            showResult('🔄 Processing your download... This may take 10-30 seconds.', 'info');
 
             try {
-                const response = await fetch(`/download/youtube?url=${encodeURIComponent(url)}`);
+                const response = await fetch(`/download/youtube?url=${encodeURIComponent(url)}&format=${currentFormat}`);
                 const data = await response.json();
 
+                if (!response.ok) {
+                    throw new Error(data.error || 'Download failed');
+                }
+
                 if (data.success) {
-                    resultDiv.innerHTML = `
+                    showResult(`
                         <div class="success">✅ Download Ready: ${data.title}</div>
                         <div style="margin-top: 15px; text-align: center;">
                             <a href="${data.downloadUrl}" download="${data.filename}" class="download-link">
                                 📥 Download ${data.type === 'audio' ? 'MP3' : 'MP4'}
                             </a>
+                            <p style="margin-top: 10px; font-size: 14px; color: #666;">
+                                Click the button above to download directly to your device
+                            </p>
                         </div>
-                    `;
+                    `, 'success');
                 } else {
-                    resultDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                    throw new Error(data.error || 'Unknown error occurred');
                 }
             } catch (error) {
-                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+                showResult(`
+                    <div class="error">
+                        ❌ ${error.message}
+                    </div>
+                    <div style="margin-top: 10px; font-size: 14px;">
+                        <strong>Possible solutions:</strong>
+                        <ul>
+                            <li>Make sure it's a valid YouTube URL</li>
+                            <li>Try a different video</li>
+                            <li>The video might be restricted in your region</li>
+                        </ul>
+                    </div>
+                `, 'error');
             } finally {
                 downloadBtn.disabled = false;
                 downloadBtn.textContent = 'Download';
+            }
+        }
+
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            if (type === 'success' || type === 'error') {
+                resultDiv.innerHTML = message;
+            } else {
+                resultDiv.innerHTML = `<div class="info">${message}</div>`;
             }
         }
 
@@ -139,6 +221,11 @@
         document.getElementById('urlInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') processDownload();
         });
+
+        // Test with a simple URL
+        setTimeout(() => {
+            document.getElementById('urlInput').value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+        }, 1000);
     </script>
 </body>
 </html>
