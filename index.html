@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Universal Download - Direct Downloads</title>
+    <title>Universal Download - Working Version</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -40,15 +40,16 @@
             border-radius: 8px;
             font-size: 16px;
         }
-        #downloadBtn {
+        button {
             padding: 15px 25px;
             background: #667eea;
             color: white;
             border: none;
             border-radius: 8px;
             cursor: pointer;
+            margin: 5px;
         }
-        #downloadBtn:disabled {
+        button:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
@@ -92,23 +93,12 @@
         .download-link:hover {
             background: #218838;
         }
-        .format-options {
-            display: flex;
-            gap: 10px;
+        .test-section {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
             margin: 15px 0;
-            justify-content: center;
-        }
-        .format-btn {
-            padding: 10px 15px;
-            background: #f8f9fa;
-            border: 2px solid #e9ecef;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .format-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
+            border-left: 4px solid #ffc107;
         }
     </style>
 </head>
@@ -116,41 +106,77 @@
     <div class="container">
         <header>
             <h1>🚀 Universal Download</h1>
-            <p>Download videos directly from YouTube and TikTok</p>
+            <p>Download videos directly from YouTube</p>
         </header>
 
-        <div class="input-section">
-            <input type="url" id="urlInput" placeholder="Paste YouTube or TikTok link here...">
-            <button id="downloadBtn" onclick="processDownload()">Download</button>
+        <div class="test-section">
+            <strong>🎯 First, let's test if downloads work:</strong>
+            <div style="margin-top: 10px;">
+                <button onclick="testDownload()">🧪 Test with Sample Video</button>
+                <p style="margin: 5px 0; font-size: 14px; color: #666;">
+                    This tests with a known working YouTube video
+                </p>
+            </div>
         </div>
 
-        <div class="format-options">
-            <label class="format-btn active" onclick="selectFormat('mp4')">
-                <input type="radio" name="format" value="mp4" checked> 🎥 MP4 Video
-            </label>
-            <label class="format-btn" onclick="selectFormat('mp3')">
-                <input type="radio" name="format" value="mp3"> 🎵 MP3 Audio
-            </label>
+        <div class="input-section">
+            <input type="url" id="urlInput" placeholder="Or paste your YouTube link here...">
+            <button id="downloadBtn" onclick="processDownload()">Download MP4</button>
         </div>
 
         <div id="result"></div>
 
         <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px;">
-            <strong>💡 Tip:</strong> Try simple YouTube URLs like: <code>https://www.youtube.com/watch?v=VIDEO_ID</code>
+            <strong>💡 Working YouTube URL Examples:</strong>
+            <ul style="margin: 10px 0; font-size: 14px;">
+                <li><code>https://www.youtube.com/watch?v=dQw4w9WgXcQ</code></li>
+                <li><code>https://youtu.be/dQw4w9WgXcQ</code></li>
+                <li><code>https://www.youtube.com/watch?v=VIDEO_ID_HERE</code></li>
+            </ul>
         </div>
     </div>
 
     <script>
-        let currentFormat = 'mp4';
-        
-        function selectFormat(format) {
-            currentFormat = format;
-            document.querySelectorAll('.format-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.currentTarget.classList.add('active');
+        async function testDownload() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="info">🧪 Testing with sample video...</div>';
+            
+            try {
+                const response = await fetch('/download/simple');
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">✅ Test Successful: ${data.title}</div>
+                        <div style="margin-top: 15px; text-align: center;">
+                            <a href="${data.downloadUrl}" download="${data.filename}" class="download-link">
+                                📥 Download Test Video
+                            </a>
+                            <p style="margin-top: 10px; color: #666;">
+                                If this works, your custom URLs should work too!
+                            </p>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Test failed');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Test Failed: ${error.message}
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <strong>This means there's a server issue. Possible reasons:</strong>
+                        <ul>
+                            <li>YouTube blocking the download</li>
+                            <li>Network restrictions</li>
+                            <li>Server configuration issue</li>
+                        </ul>
+                    </div>
+                `;
+            }
         }
-        
+
         async function processDownload() {
             const url = document.getElementById('urlInput').value.trim();
             const resultDiv = document.getElementById('result');
@@ -163,10 +189,10 @@
 
             downloadBtn.disabled = true;
             downloadBtn.textContent = 'Processing...';
-            showResult('🔄 Processing your download... This may take 10-30 seconds.', 'info');
+            showResult('🔄 Processing your download...', 'info');
 
             try {
-                const response = await fetch(`/download/youtube?url=${encodeURIComponent(url)}&format=${currentFormat}`);
+                const response = await fetch(`/download/youtube?url=${encodeURIComponent(url)}`);
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -178,15 +204,15 @@
                         <div class="success">✅ Download Ready: ${data.title}</div>
                         <div style="margin-top: 15px; text-align: center;">
                             <a href="${data.downloadUrl}" download="${data.filename}" class="download-link">
-                                📥 Download ${data.type === 'audio' ? 'MP3' : 'MP4'}
+                                📥 Download MP4
                             </a>
                             <p style="margin-top: 10px; font-size: 14px; color: #666;">
-                                Click the button above to download directly to your device
+                                Click the button above to download
                             </p>
                         </div>
                     `, 'success');
                 } else {
-                    throw new Error(data.error || 'Unknown error occurred');
+                    throw new Error(data.error || 'Unknown error');
                 }
             } catch (error) {
                 showResult(`
@@ -194,17 +220,18 @@
                         ❌ ${error.message}
                     </div>
                     <div style="margin-top: 10px; font-size: 14px;">
-                        <strong>Possible solutions:</strong>
+                        <strong>Try this:</strong>
                         <ul>
-                            <li>Make sure it's a valid YouTube URL</li>
+                            <li>Use the "Test with Sample Video" button first</li>
+                            <li>Make sure it's a standard YouTube URL</li>
                             <li>Try a different video</li>
-                            <li>The video might be restricted in your region</li>
+                            <li>Remove any special characters from the URL</li>
                         </ul>
                     </div>
                 `, 'error');
             } finally {
                 downloadBtn.disabled = false;
-                downloadBtn.textContent = 'Download';
+                downloadBtn.textContent = 'Download MP4';
             }
         }
 
@@ -222,10 +249,8 @@
             if (e.key === 'Enter') processDownload();
         });
 
-        // Test with a simple URL
-        setTimeout(() => {
-            document.getElementById('urlInput').value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-        }, 1000);
+        // Add a sample URL for testing
+        document.getElementById('urlInput').value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
     </script>
 </body>
 </html>
