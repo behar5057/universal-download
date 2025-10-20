@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Universal Download - Working Version</title>
+    <title>Universal Download - WORKING</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -100,80 +100,94 @@
             margin: 15px 0;
             border-left: 4px solid #ffc107;
         }
+        .url-example {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>🚀 Universal Download</h1>
-            <p>Download videos directly from YouTube</p>
+            <p>YouTube Video Downloader - Now Working! 🎉</p>
         </header>
 
         <div class="test-section">
-            <strong>🎯 First, let's test if downloads work:</strong>
+            <strong>🎯 STEP 1: Test if downloads work</strong>
             <div style="margin-top: 10px;">
-                <button onclick="testDownload()">🧪 Test with Sample Video</button>
+                <button onclick="testDownload()">🧪 Test Download System</button>
                 <p style="margin: 5px 0; font-size: 14px; color: #666;">
-                    This tests with a known working YouTube video
+                    This tests with multiple videos to ensure downloads work
                 </p>
             </div>
         </div>
 
-        <div class="input-section">
-            <input type="url" id="urlInput" placeholder="Or paste your YouTube link here...">
-            <button id="downloadBtn" onclick="processDownload()">Download MP4</button>
+        <div style="margin: 20px 0;">
+            <strong>📥 STEP 2: Download your video</strong>
+            <div class="input-section">
+                <input type="url" id="urlInput" placeholder="Paste ANY YouTube URL here...">
+                <button id="downloadBtn" onclick="processDownload()">Download Video</button>
+            </div>
         </div>
 
         <div id="result"></div>
 
         <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px;">
-            <strong>💡 Working YouTube URL Examples:</strong>
-            <ul style="margin: 10px 0; font-size: 14px;">
-                <li><code>https://www.youtube.com/watch?v=dQw4w9WgXcQ</code></li>
-                <li><code>https://youtu.be/dQw4w9WgXcQ</code></li>
-                <li><code>https://www.youtube.com/watch?v=VIDEO_ID_HERE</code></li>
-            </ul>
+            <strong>💡 PRO TIP:</strong> 
+            <p>If your URL has special characters, try using just the video ID:</p>
+            <div class="url-example">
+                https://www.youtube.com/watch?v=FbH0opHwObM
+            </div>
+            <p style="margin: 10px 0 0 0; font-size: 14px;">
+                Remove everything after <code>&amp;pp=...</code> in your URL
+            </p>
         </div>
     </div>
 
     <script>
         async function testDownload() {
             const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = '<div class="info">🧪 Testing with sample video...</div>';
+            showResult('🧪 Testing download system with multiple videos...', 'info');
             
             try {
-                const response = await fetch('/download/simple');
+                const response = await fetch('/download/test');
                 const data = await response.json();
 
                 if (data.success) {
-                    resultDiv.innerHTML = `
-                        <div class="success">✅ Test Successful: ${data.title}</div>
+                    showResult(`
+                        <div class="success">
+                            ✅ ${data.message}
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <strong>Test Video:</strong> ${data.title}
+                        </div>
                         <div style="margin-top: 15px; text-align: center;">
                             <a href="${data.downloadUrl}" download="${data.filename}" class="download-link">
                                 📥 Download Test Video
                             </a>
-                            <p style="margin-top: 10px; color: #666;">
-                                If this works, your custom URLs should work too!
-                            </p>
                         </div>
-                    `;
+                        <div style="margin-top: 10px; color: #666; font-size: 14px;">
+                            If this works, your custom URLs should work too!
+                        </div>
+                    `, 'success');
                 } else {
-                    throw new Error(data.error || 'Test failed');
+                    throw new Error(data.error || 'All test videos failed');
                 }
             } catch (error) {
-                resultDiv.innerHTML = `
+                showResult(`
                     <div class="error">
-                        ❌ Test Failed: ${error.message}
+                        ❌ System Test Failed: ${error.message}
                     </div>
-                    <div style="margin-top: 10px;">
-                        <strong>This means there's a server issue. Possible reasons:</strong>
-                        <ul>
-                            <li>YouTube blocking the download</li>
-                            <li>Network restrictions</li>
-                            <li>Server configuration issue</li>
-                        </ul>
+                    <div style="margin-top: 10px; font-size: 14px;">
+                        <strong>This means YouTube is blocking downloads from Render.</strong>
+                        <p>Free hosting services are often blocked by YouTube.</p>
                     </div>
-                `;
+                `, 'error');
             }
         }
 
@@ -189,7 +203,7 @@
 
             downloadBtn.disabled = true;
             downloadBtn.textContent = 'Processing...';
-            showResult('🔄 Processing your download...', 'info');
+            showResult('🔄 Processing your URL...', 'info');
 
             try {
                 const response = await fetch(`/download/youtube?url=${encodeURIComponent(url)}`);
@@ -201,14 +215,19 @@
 
                 if (data.success) {
                     showResult(`
-                        <div class="success">✅ Download Ready: ${data.title}</div>
+                        <div class="success">
+                            ✅ Download Ready!
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <strong>Title:</strong> ${data.title}
+                        </div>
                         <div style="margin-top: 15px; text-align: center;">
                             <a href="${data.downloadUrl}" download="${data.filename}" class="download-link">
-                                📥 Download MP4
+                                📥 Download MP4 Video
                             </a>
-                            <p style="margin-top: 10px; font-size: 14px; color: #666;">
-                                Click the button above to download
-                            </p>
+                        </div>
+                        <div style="margin-top: 10px; color: #666; font-size: 14px;">
+                            Quality: ${data.quality} | Click to download directly
                         </div>
                     `, 'success');
                 } else {
@@ -220,18 +239,16 @@
                         ❌ ${error.message}
                     </div>
                     <div style="margin-top: 10px; font-size: 14px;">
-                        <strong>Try this:</strong>
-                        <ul>
-                            <li>Use the "Test with Sample Video" button first</li>
-                            <li>Make sure it's a standard YouTube URL</li>
-                            <li>Try a different video</li>
-                            <li>Remove any special characters from the URL</li>
-                        </ul>
+                        <strong>Quick Fix:</strong> Try using just the basic URL:
+                        <div class="url-example">
+                            https://www.youtube.com/watch?v=FbH0opHwObM
+                        </div>
+                        Remove the <code>&amp;pp=...</code> part from your URL
                     </div>
                 `, 'error');
             } finally {
                 downloadBtn.disabled = false;
-                downloadBtn.textContent = 'Download MP4';
+                downloadBtn.textContent = 'Download Video';
             }
         }
 
@@ -249,8 +266,8 @@
             if (e.key === 'Enter') processDownload();
         });
 
-        // Add a sample URL for testing
-        document.getElementById('urlInput').value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+        // Pre-fill with clean URL
+        document.getElementById('urlInput').value = 'https://www.youtube.com/watch?v=FbH0opHwObM';
     </script>
 </body>
 </html>
