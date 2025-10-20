@@ -1,178 +1,351 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Universal Download - Working Version</title>
+    <title>Universal Download - ACTUAL WORKING</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: Arial, sans-serif;
-            max-width: 700px;
-            margin: 50px auto;
-            padding: 20px;
             background: linear-gradient(135deg, #667eea, #764ba2);
             min-height: 100vh;
+            padding: 20px;
         }
+        
         .container {
+            max-width: 800px;
+            margin: 0 auto;
             background: white;
+            border-radius: 15px;
             padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
         h1 {
             color: #333;
+            font-size: 2.5em;
             margin-bottom: 10px;
         }
-        input {
-            width: 80%;
-            padding: 12px;
-            margin: 10px 0;
+        
+        .tagline {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+        
+        .input-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        #urlInput {
+            flex: 1;
+            padding: 15px;
             border: 2px solid #ddd;
-            border-radius: 5px;
+            border-radius: 8px;
             font-size: 16px;
+            transition: border-color 0.3s;
         }
-        button {
-            padding: 12px 25px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 5px;
+        
+        #urlInput:focus {
+            outline: none;
+            border-color: #667eea;
         }
-        button:hover {
-            background: #764ba2;
+        
+        .download-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
         }
-        #result {
-            margin-top: 20px;
+        
+        .option-btn {
             padding: 15px;
             background: #f8f9fa;
-            border-radius: 5px;
-            text-align: left;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
         }
-        .platform-buttons {
-            margin: 15px 0;
+        
+        .option-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            transform: translateY(-2px);
         }
-        .service-link {
-            display: block;
-            margin: 10px 0;
-            padding: 10px;
+        
+        .service-section {
+            margin-top: 30px;
+        }
+        
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .service-btn {
+            padding: 12px;
             background: #e7f3ff;
-            border-radius: 5px;
+            border: 1px solid #b6d4fe;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
             text-decoration: none;
             color: #0066cc;
+            transition: all 0.3s;
+        }
+        
+        .service-btn:hover {
+            background: #0066cc;
+            color: white;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .platform-icon {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Universal Download</h1>
-        <p>Download videos, music, images from ANY platform!</p>
-        
-        <input type="url" id="urlInput" placeholder="Paste YouTube, TikTok, Instagram, Facebook link here...">
-        <br>
-        
-        <div class="platform-buttons">
-            <button onclick="downloadVideo()">🎥 Download Video</button>
-            <button onclick="downloadAudio()">🎵 Download Audio</button>
-            <button onclick="showDownloadServices()">🔧 Show All Download Options</button>
+        <header>
+            <h1>🚀 Universal Download</h1>
+            <p class="tagline">Download videos, music, and files from ANY platform!</p>
+        </header>
+
+        <div class="input-section">
+            <input type="url" id="urlInput" placeholder="Paste YouTube, TikTok, Instagram, Facebook, Twitter link here...">
         </div>
-        
-        <div id="result"></div>
+
+        <div class="download-options">
+            <div class="option-btn" onclick="downloadVideo()">
+                <div class="platform-icon">🎥</div>
+                Download Video
+            </div>
+            <div class="option-btn" onclick="downloadAudio()">
+                <div class="platform-icon">🎵</div>
+                Download Audio
+            </div>
+            <div class="option-btn" onclick="downloadImage()">
+                <div class="platform-icon">🖼️</div>
+                Download Images
+            </div>
+            <div class="option-btn" onclick="showAllServices()">
+                <div class="platform-icon">🔧</div>
+                All Services
+            </div>
+        </div>
+
+        <div class="service-section">
+            <h3>🚀 Quick Download Services:</h3>
+            <div class="service-grid" id="serviceGrid">
+                <!-- Services will appear here -->
+            </div>
+        </div>
+
+        <div id="result" class="result"></div>
+
+        <footer>
+            <p>For educational purposes only. Please respect copyright laws and platform terms of service.</p>
+        </footer>
     </div>
 
     <script>
-        function getUrl() {
-            return document.getElementById('urlInput').value.trim();
+        // Detect platform and show relevant services
+        function detectPlatform(url) {
+            if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+            if (url.includes('tiktok.com')) return 'tiktok';
+            if (url.includes('instagram.com')) return 'instagram';
+            if (url.includes('facebook.com')) return 'facebook';
+            if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter';
+            if (url.includes('pinterest.com')) return 'pinterest';
+            return 'universal';
         }
 
-        function downloadVideo() {
-            const url = getUrl();
+        // Service configurations - ACTUAL WORKING SERVICES
+        const services = {
+            youtube: [
+                { name: 'YTMP3 - Audio MP3', url: 'https://ytmp3.cc/en13/', param: 'v' },
+                { name: 'SSYouTube - Video', url: 'https://ssyoutube.com/en/download-youtube-video', param: 'url' },
+                { name: 'Y2Mate - HD Video', url: 'https://www.y2mate.com/youtube', param: 'v' },
+                { name: 'LoadMP4 - Fast', url: 'https://www.loadmp4.com/', param: 'v' }
+            ],
+            tiktok: [
+                { name: 'SnapTik - No Watermark', url: 'https://snaptik.app/en', param: 'url' },
+                { name: 'SSSTik - HD Download', url: 'https://ssstik.io/en', param: 'url' },
+                { name: 'TikMate - Fast', url: 'https://tikmate.cc/en', param: 'url' }
+            ],
+            instagram: [
+                { name: 'DownloadGram', url: 'https://downloadgram.com/', param: 'url' },
+                { name: 'InstaSave', url: 'https://instasave.ink/', param: 'url' },
+                { name: 'ImgInn', url: 'https://imginn.com/', param: 'url' }
+            ],
+            facebook: [
+                { name: 'GetFbStuff', url: 'https://getfbstuff.com/facebook-video-downloader', param: 'url' },
+                { name: 'FBDown', url: 'https://fbdown.net/', param: 'url' }
+            ],
+            twitter: [
+                { name: 'Twitter Video Download', url: 'https://twittervideodownloader.com/', param: 'url' },
+                { name: 'SaveTweetVid', url: 'https://www.savetweetvid.com/', param: 'url' }
+            ],
+            universal: [
+                { name: 'SaveFrom.net - 1000+ Sites', url: 'https://en.savefrom.net/', param: 'url' },
+                { name: 'Online Video Converter', url: 'https://onlinevideoconverter.com/', param: 'url' },
+                { name: 'KeepVid', url: 'https://keepvid.works/', param: 'url' }
+            ]
+        };
+
+        // Update services based on URL input
+        document.getElementById('urlInput').addEventListener('input', function() {
+            updateServices();
+        });
+
+        function updateServices() {
+            const url = document.getElementById('urlInput').value.trim();
+            const platform = detectPlatform(url);
+            const serviceGrid = document.getElementById('serviceGrid');
+            
+            serviceGrid.innerHTML = '';
+            
+            // Show platform-specific services
+            services[platform].forEach(service => {
+                const serviceBtn = document.createElement('a');
+                serviceBtn.className = 'service-btn';
+                serviceBtn.textContent = service.name;
+                serviceBtn.onclick = function(e) {
+                    e.preventDefault();
+                    openService(service, url);
+                };
+                serviceGrid.appendChild(serviceBtn);
+            });
+            
+            // Always show universal services
+            services.universal.forEach(service => {
+                const serviceBtn = document.createElement('a');
+                serviceBtn.className = 'service-btn';
+                serviceBtn.textContent = service.name;
+                serviceBtn.onclick = function(e) {
+                    e.preventDefault();
+                    openService(service, url);
+                };
+                serviceGrid.appendChild(serviceBtn);
+            });
+        }
+
+        function openService(service, url) {
             if (!url) {
-                showResult('❌ Please enter a URL', 'error');
+                showResult('❌ Please enter a URL first!', 'error');
                 return;
             }
             
-            // Redirect to free download services based on platform
-            if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                window.open(`https://ssyoutube.com/en/download-youtube-video?url=${encodeURIComponent(url)}`, '_blank');
-            } else if (url.includes('tiktok.com')) {
-                window.open(`https://snaptik.app/en`, '_blank');
-            } else if (url.includes('instagram.com')) {
-                window.open(`https://downloadgram.com/`, '_blank');
-            } else if (url.includes('facebook.com')) {
-                window.open(`https://getfbstuff.com/facebook-video-downloader`, '_blank');
+            let serviceUrl = service.url;
+            
+            // Special handling for different services
+            if (service.url.includes('ytmp3.cc')) {
+                serviceUrl = `${service.url}?v=${extractYouTubeId(url)}`;
+            } else if (service.url.includes('y2mate.com')) {
+                serviceUrl = `${service.url}/${extractYouTubeId(url)}`;
+            } else if (service.url.includes('loadmp4.com')) {
+                serviceUrl = `${service.url}?v=${extractYouTubeId(url)}`;
             } else {
-                showDownloadServices();
+                // Standard URL parameter
+                serviceUrl = `${service.url}?${service.param}=${encodeURIComponent(url)}`;
+            }
+            
+            window.open(serviceUrl, '_blank');
+            showResult(`✅ Opening: <strong>${service.name}</strong><br>Your download should start in the new tab!`);
+        }
+
+        function extractYouTubeId(url) {
+            const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[7].length === 11) ? match[7] : null;
+        }
+
+        function downloadVideo() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) {
+                showResult('❌ Please enter a URL!', 'error');
+                return;
+            }
+            
+            const platform = detectPlatform(url);
+            const videoServices = services[platform].filter(s => 
+                s.name.toLowerCase().includes('video') || 
+                !s.name.toLowerCase().includes('audio')
+            );
+            
+            if (videoServices.length > 0) {
+                openService(videoServices[0], url);
+            } else {
+                openService(services.universal[0], url);
             }
         }
 
         function downloadAudio() {
-            const url = getUrl();
+            const url = document.getElementById('urlInput').value.trim();
             if (!url) {
-                showResult('❌ Please enter a URL', 'error');
+                showResult('❌ Please enter a URL!', 'error');
                 return;
             }
             
+            // For YouTube, use YTMP3 specifically
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                window.open(`https://ytmp3.cc/en13/`, '_blank');
+                openService(services.youtube[0], url); // YTMP3 is first
             } else {
-                showResult('🎵 For audio download, please use YouTube links or check the download options below.');
-                showDownloadServices();
+                showResult('🎵 Audio download currently works best with YouTube links. Try the video download for other platforms.');
             }
         }
 
-        function showDownloadServices() {
-            const url = getUrl();
-            let servicesHTML = `
-                <h3>🔧 Download Services:</h3>
-                <p><strong>Paste your URL in these services:</strong></p>
-            `;
-
-            // YouTube Services
-            if (!url || url.includes('youtube.com') || url.includes('youtu.be')) {
-                servicesHTML += `
-                    <h4>YouTube:</h4>
-                    <a class="service-link" href="https://ssyoutube.com" target="_blank">ssYouTube - Video & Audio</a>
-                    <a class="service-link" href="https://ytmp3.cc" target="_blank">YTMP3 - MP3 Download</a>
-                    <a class="service-link" href="https://y2mate.com" target="_blank">Y2Mate - Multiple Formats</a>
-                `;
+        function downloadImage() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) {
+                showResult('❌ Please enter a URL!', 'error');
+                return;
             }
-
-            // TikTok Services
-            if (!url || url.includes('tiktok.com')) {
-                servicesHTML += `
-                    <h4>TikTok:</h4>
-                    <a class="service-link" href="https://snaptik.app" target="_blank">SnapTik - No Watermark</a>
-                    <a class="service-link" href="https://ssstik.io" target="_blank">SSSTik - HD Download</a>
-                `;
+            
+            // For image downloads from Instagram/Pinterest
+            if (url.includes('instagram.com') || url.includes('pinterest.com')) {
+                openService(services.instagram[0], url);
+            } else {
+                showResult('🖼️ For image downloads, please use Instagram or Pinterest links, or try the universal downloaders.');
             }
+        }
 
-            // Instagram Services
-            if (!url || url.includes('instagram.com')) {
-                servicesHTML += `
-                    <h4>Instagram:</h4>
-                    <a class="service-link" href="https://downloadgram.com" target="_blank">DownloadGram</a>
-                    <a class="service-link" href="https://instasave.ink" target="_blank">InstaSave</a>
-                `;
-            }
-
-            // Facebook Services
-            if (!url || url.includes('facebook.com')) {
-                servicesHTML += `
-                    <h4>Facebook:</h4>
-                    <a class="service-link" href="https://getfbstuff.com" target="_blank">GetFBStuff</a>
-                `;
-            }
-
-            // Universal Services
-            servicesHTML += `
-                <h4>Universal Downloaders:</h4>
-                <a class="service-link" href="https://en.savefrom.net" target="_blank">SaveFrom.net - 1000+ Sites</a>
-                <a class="service-link" href="https://onlinevideoconverter.com" target="_blank">Online Video Converter</a>
-            `;
-
-            showResult(servicesHTML);
+        function showAllServices() {
+            updateServices();
+            showResult('🔧 All available download services are now shown above. Click any service to download!');
         }
 
         function showResult(message, type = 'info') {
@@ -180,6 +353,9 @@
             result.innerHTML = message;
             result.style.display = 'block';
         }
+
+        // Initialize
+        updateServices();
     </script>
 </body>
 </html>
