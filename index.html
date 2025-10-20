@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Universal Download</title>
+    <title>Universal Download - Working Version</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 600px;
+            max-width: 700px;
             margin: 50px auto;
             padding: 20px;
             background: linear-gradient(135deg, #667eea, #764ba2);
@@ -21,10 +21,6 @@
         h1 {
             color: #333;
             margin-bottom: 10px;
-        }
-        p {
-            color: #666;
-            margin-bottom: 20px;
         }
         input {
             width: 80%;
@@ -42,6 +38,7 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
+            margin: 5px;
         }
         button:hover {
             background: #764ba2;
@@ -51,6 +48,19 @@
             padding: 15px;
             background: #f8f9fa;
             border-radius: 5px;
+            text-align: left;
+        }
+        .platform-buttons {
+            margin: 15px 0;
+        }
+        .service-link {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e7f3ff;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #0066cc;
         }
     </style>
 </head>
@@ -59,29 +69,116 @@
         <h1>🚀 Universal Download</h1>
         <p>Download videos, music, images from ANY platform!</p>
         
-        <input type="url" id="urlInput" placeholder="Paste YouTube, TikTok, Facebook link here...">
+        <input type="url" id="urlInput" placeholder="Paste YouTube, TikTok, Instagram, Facebook link here...">
         <br>
-        <button onclick="startDownload()">📥 Download Now</button>
+        
+        <div class="platform-buttons">
+            <button onclick="downloadVideo()">🎥 Download Video</button>
+            <button onclick="downloadAudio()">🎵 Download Audio</button>
+            <button onclick="showDownloadServices()">🔧 Show All Download Options</button>
+        </div>
         
         <div id="result"></div>
     </div>
 
     <script>
-        function startDownload() {
-            const url = document.getElementById('urlInput').value;
-            const result = document.getElementById('result');
-            
+        function getUrl() {
+            return document.getElementById('urlInput').value.trim();
+        }
+
+        function downloadVideo() {
+            const url = getUrl();
             if (!url) {
-                result.innerHTML = '<p style="color: red;">❌ Please enter a URL</p>';
+                showResult('❌ Please enter a URL', 'error');
                 return;
             }
             
-            result.innerHTML = `
-                <h3>✅ Download Ready!</h3>
-                <p>Processing: <strong>${url}</strong></p>
-                <p>Format: MP4 | Quality: HD</p>
-                <p><em>In real version, your download would start now!</em></p>
+            // Redirect to free download services based on platform
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                window.open(`https://ssyoutube.com/en/download-youtube-video?url=${encodeURIComponent(url)}`, '_blank');
+            } else if (url.includes('tiktok.com')) {
+                window.open(`https://snaptik.app/en`, '_blank');
+            } else if (url.includes('instagram.com')) {
+                window.open(`https://downloadgram.com/`, '_blank');
+            } else if (url.includes('facebook.com')) {
+                window.open(`https://getfbstuff.com/facebook-video-downloader`, '_blank');
+            } else {
+                showDownloadServices();
+            }
+        }
+
+        function downloadAudio() {
+            const url = getUrl();
+            if (!url) {
+                showResult('❌ Please enter a URL', 'error');
+                return;
+            }
+            
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                window.open(`https://ytmp3.cc/en13/`, '_blank');
+            } else {
+                showResult('🎵 For audio download, please use YouTube links or check the download options below.');
+                showDownloadServices();
+            }
+        }
+
+        function showDownloadServices() {
+            const url = getUrl();
+            let servicesHTML = `
+                <h3>🔧 Download Services:</h3>
+                <p><strong>Paste your URL in these services:</strong></p>
             `;
+
+            // YouTube Services
+            if (!url || url.includes('youtube.com') || url.includes('youtu.be')) {
+                servicesHTML += `
+                    <h4>YouTube:</h4>
+                    <a class="service-link" href="https://ssyoutube.com" target="_blank">ssYouTube - Video & Audio</a>
+                    <a class="service-link" href="https://ytmp3.cc" target="_blank">YTMP3 - MP3 Download</a>
+                    <a class="service-link" href="https://y2mate.com" target="_blank">Y2Mate - Multiple Formats</a>
+                `;
+            }
+
+            // TikTok Services
+            if (!url || url.includes('tiktok.com')) {
+                servicesHTML += `
+                    <h4>TikTok:</h4>
+                    <a class="service-link" href="https://snaptik.app" target="_blank">SnapTik - No Watermark</a>
+                    <a class="service-link" href="https://ssstik.io" target="_blank">SSSTik - HD Download</a>
+                `;
+            }
+
+            // Instagram Services
+            if (!url || url.includes('instagram.com')) {
+                servicesHTML += `
+                    <h4>Instagram:</h4>
+                    <a class="service-link" href="https://downloadgram.com" target="_blank">DownloadGram</a>
+                    <a class="service-link" href="https://instasave.ink" target="_blank">InstaSave</a>
+                `;
+            }
+
+            // Facebook Services
+            if (!url || url.includes('facebook.com')) {
+                servicesHTML += `
+                    <h4>Facebook:</h4>
+                    <a class="service-link" href="https://getfbstuff.com" target="_blank">GetFBStuff</a>
+                `;
+            }
+
+            // Universal Services
+            servicesHTML += `
+                <h4>Universal Downloaders:</h4>
+                <a class="service-link" href="https://en.savefrom.net" target="_blank">SaveFrom.net - 1000+ Sites</a>
+                <a class="service-link" href="https://onlinevideoconverter.com" target="_blank">Online Video Converter</a>
+            `;
+
+            showResult(servicesHTML);
+        }
+
+        function showResult(message, type = 'info') {
+            const result = document.getElementById('result');
+            result.innerHTML = message;
+            result.style.display = 'block';
         }
     </script>
 </body>
