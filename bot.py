@@ -1,7 +1,6 @@
 import os
 import logging
 import yt_dlp
-import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
 
@@ -16,27 +15,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Supported domains
-SUPPORTED_DOMAINS = [
-    'youtube.com', 'youtu.be', 'instagram.com', 'facebook.com', 
-    'fb.watch', 'tiktok.com', 'twitter.com', 'x.com',
-    'vimeo.com', 'soundcloud.com', 'pinterest.com'
-]
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send welcome message when the command /start is issued."""
     welcome_text = """
 🎬 *Universal Media Downloader Bot* 🎵
 
-Welcome! I can download media from various platforms including:
-• YouTube
-• Instagram  
-• Facebook
-• TikTok
-• Twitter/X
-• Pinterest
-• SoundCloud
-• Vimeo
+Welcome! I can download media from various platforms!
 
 📝 *How to use:*
 Just send me any media URL and I'll give you options to download as MP3 (audio) or MP4 (video)!
@@ -44,16 +28,15 @@ Just send me any media URL and I'll give you options to download as MP3 (audio) 
 ⚡ Fast • 🔒 Secure • 🆓 Free
     """
     await update.message.reply_text(welcome_text, parse_mode='Markdown')
-    logger.info(f"Start command from user {update.message.from_user.id}")
+    logger.info("Start command received")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle incoming messages containing URLs."""
     message_text = update.message.text.strip()
-    logger.info(f"Received message: {message_text}")
+    logger.info(f"Received: {message_text}")
     
-    # Check if it's a URL
-    if any(domain in message_text.lower() for domain in SUPPORTED_DOMAINS):
-        # Create format selection buttons
+    # Simple URL check
+    if any(domain in message_text for domain in ['http://', 'https://']):
         keyboard = [
             [
                 InlineKeyboardButton("🎵 MP3 (Audio)", callback_data=f"mp3|{message_text}"),
@@ -68,11 +51,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='Markdown'
         )
     else:
-        await update.message.reply_text(
-            "❌ Please send a valid URL from supported platforms:\n"
-            "YouTube, Instagram, Facebook, TikTok, Twitter, etc.",
-            parse_mode='Markdown'
-        )
+        await update.message.reply_text("❌ Please send a valid URL starting with http:// or https://")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle button callbacks."""
@@ -83,37 +62,32 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data = query.data
         format_type, url = data.split('|', 1)
         
-        await query.edit_message_text(
-            f"⏳ *Processing your {format_type.upper()} download...*\n\nPlease wait...",
-            parse_mode='Markdown'
-        )
+        await query.edit_message_text(f"⏳ Processing your {format_type.upper()}...")
         
         # Download the media
-        file_path = await download_media(url, format_type)
+        file_path = download_media(url, format_type)
         
-        if file_path:
+        if file_path and os.path.exists(file_path):
             if format_type == 'mp3':
                 await query.message.reply_audio(
                     audio=open(file_path, 'rb'),
                     caption="🎵 Your audio is ready!"
                 )
-            else:  # mp4
+            else:
                 await query.message.reply_video(
                     video=open(file_path, 'rb'),
                     caption="🎬 Your video is ready!",
                     supports_streaming=True
                 )
-            
-            # Clean up
             os.remove(file_path)
         else:
-            await query.message.reply_text("❌ Download failed. Please try another URL.")
+            await query.message.reply_text("❌ Download failed. Try another URL.")
             
     except Exception as e:
-        logger.error(f"Error in button handler: {e}")
-        await query.message.reply_text("❌ An error occurred. Please try again.")
+        logger.error(f"Error: {e}")
+        await query.message.reply_text("❌ Error processing your request.")
 
-async def download_media(url, format_type):
+def download_media(url, format_type):
     """Download media using yt-dlp."""
     try:
         os.makedirs('downloads', exist_ok=True)
@@ -135,7 +109,10 @@ async def download_media(url, format_type):
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            return ydl.prepare_filename(info)
+            file_path = ydl.prepare_filename(info)
+            if format_type == 'mp3':
+                file_path = file_path.rsplit('.', 1)[0] + '.mp3'
+            return file_path
             
     except Exception as e:
         logger.error(f"Download error: {e}")
@@ -143,16 +120,18 @@ async def download_media(url, format_type):
 
 def main():
     """Start the bot."""
-    application = Application.builder().token(BOT_TOKEN).build()
-    
-    # Add handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    application.add_handler(CallbackQueryHandler(button_handler))
-    
-    print("🤖 Bot is starting...")
-    application.run_polling()
-    print("🤖 Bot is running!")
+    try:
+        application = Application.builder().token(BOT_TOKEN).build()
+        
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        application.add_handler(CallbackQueryHandler(button_handler))
+        
+        print("🤖 Bot starting...")
+        application.run_polling()
+        
+    except Exception as e:
+        logger.error(f"Bot failed to start: {e}")
 
 if __name__ == '__main__':
     main()
