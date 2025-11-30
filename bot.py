@@ -2,7 +2,7 @@ import os
 import logging
 import yt_dlp
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
 
 # Bot configuration
 BOT_TOKEN = "8268332814:AAFgKG_g9yWTkYq6mnVNP7NbzjtTRDD7tYo"
@@ -15,7 +15,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def start(update: Update, context: CallbackContext):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send welcome message when the command /start is issued."""
     welcome_text = """
 🎬 *Universal Media Downloader Bot* 🎵
@@ -27,10 +27,10 @@ Just send me any media URL and I'll give you options to download as MP3 (audio) 
 
 ⚡ Fast • 🔒 Secure • 🆓 Free
     """
-    update.message.reply_text(welcome_text, parse_mode='Markdown')
+    await update.message.reply_text(welcome_text, parse_mode='Markdown')
     logger.info("Start command received")
 
-def handle_message(update: Update, context: CallbackContext):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle incoming messages containing URLs."""
     message_text = update.message.text.strip()
     logger.info(f"Received: {message_text}")
@@ -45,47 +45,47 @@ def handle_message(update: Update, context: CallbackContext):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        update.message.reply_text(
+        await update.message.reply_text(
             "📥 *Download Options*\n\nChoose your preferred format:",
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
     else:
-        update.message.reply_text("❌ Please send a valid URL starting with http:// or https://")
+        await update.message.reply_text("❌ Please send a valid URL starting with http:// or https://")
 
-def button_handler(update: Update, context: CallbackContext):
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle button callbacks."""
     query = update.callback_query
-    query.answer()
+    await query.answer()
     
     try:
         data = query.data
         format_type, url = data.split('|', 1)
         
-        query.edit_message_text(f"⏳ Processing your {format_type.upper()}...")
+        await query.edit_message_text(f"⏳ Processing your {format_type.upper()}...")
         
         # Download the media
         file_path = download_media(url, format_type)
         
         if file_path and os.path.exists(file_path):
             if format_type == 'mp3':
-                query.message.reply_audio(
+                await query.message.reply_audio(
                     audio=open(file_path, 'rb'),
                     caption="🎵 Your audio is ready!"
                 )
             else:
-                query.message.reply_video(
+                await query.message.reply_video(
                     video=open(file_path, 'rb'),
                     caption="🎬 Your video is ready!",
                     supports_streaming=True
                 )
             os.remove(file_path)
         else:
-            query.message.reply_text("❌ Download failed. Try another URL.")
+            await query.message.reply_text("❌ Download failed. Try another URL.")
             
     except Exception as e:
         logger.error(f"Error: {e}")
-        query.message.reply_text("❌ Error processing your request.")
+        await query.message.reply_text("❌ Error processing your request.")
 
 def download_media(url, format_type):
     """Download media using yt-dlp."""
@@ -118,30 +118,26 @@ def download_media(url, format_type):
         logger.error(f"Download error: {e}")
         return None
 
-def error_handler(update: Update, context: CallbackContext):
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Log errors caused by Updates."""
     logger.error(f"Update {update} caused error {context.error}")
 
 def main():
     """Start the bot."""
     try:
-        # Create updater and dispatcher
-        updater = Updater(BOT_TOKEN, use_context=True)
-        dispatcher = updater.dispatcher
+        # Create application
+        application = Application.builder().token(BOT_TOKEN).build()
         
         # Add handlers
-        dispatcher.add_handler(CommandHandler("start", start))
-        dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-        dispatcher.add_handler(CallbackQueryHandler(button_handler))
-        dispatcher.add_error_handler(error_handler)
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        application.add_handler(CallbackQueryHandler(button_handler))
+        application.add_error_handler(error_handler)
         
         # Start bot
         print("🤖 Bot starting...")
-        updater.start_polling()
+        application.run_polling()
         print("🤖 Bot is running!")
-        
-        # Run the bot until you press Ctrl-C
-        updater.idle()
         
     except Exception as e:
         logger.error(f"Bot failed to start: {e}")
