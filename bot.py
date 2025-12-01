@@ -7,6 +7,7 @@ import time
 import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
+from flask import Flask
 
 # Bot configuration
 BOT_TOKEN = "8268332814:AAGhskQ16kgCieoz8BBHX6iQWxDEGt5XPxg"
@@ -19,8 +20,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Store URLs temporarily
-user_urls = {}
+# Flask app for web server
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "🤖 Bot is running! Use /start on Telegram."
 
 def keep_alive():
     """Ping the Render URL every 10 minutes to keep it awake."""
@@ -31,6 +36,13 @@ def keep_alive():
         except:
             print("⚠️ Ping failed")
         time.sleep(600)  # 10 minutes
+
+def start_flask():
+    """Start Flask web server."""
+    app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+
+# Store URLs temporarily
+user_urls = {}
 
 def get_url_hash(url):
     """Create a short hash for the URL to avoid long callback data."""
@@ -134,12 +146,18 @@ def download_media(url, format_type):
         return None
 
 def main():
-    """Start the bot."""
+    """Start everything."""
+    print("🚀 Starting bot with web server...")
+    
     # Start keep-alive thread
     keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
     keep_alive_thread.start()
     
-    # Create application
+    # Start Flask in a separate thread
+    flask_thread = threading.Thread(target=start_flask, daemon=True)
+    flask_thread.start()
+    
+    # Create Telegram application
     application = Application.builder().token(BOT_TOKEN).build()
     
     # Add handlers
@@ -148,8 +166,8 @@ def main():
     application.add_handler(CallbackQueryHandler(button_handler))
     
     # Start bot
-    print("🤖 Bot starting with keep-alive...")
-    print("✅ Bot will stay awake!")
+    print("🤖 Bot is running with web server!")
+    print("🌐 Visit: https://universal-download.onrender.com")
     application.run_polling()
 
 if __name__ == '__main__':
