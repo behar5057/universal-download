@@ -28,12 +28,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = """
 🎬 *Universal Media Downloader Bot* 🎵
 
-Welcome! I can download media from various platforms!
+Welcome! I can download media from various platforms including:
+• YouTube
+• Instagram
+• Facebook
+• TikTok
+• Twitter/X
+• And many more!
 
 📝 *How to use:*
 Just send me any media URL and I'll give you options to download as MP3 (audio) or MP4 (video)!
 
 ⚡ Fast • 🔒 Secure • 🆓 Free
+
+💡 *Tip:* YouTube URLs work best for testing!
     """
     await update.message.reply_text(welcome_text, parse_mode='Markdown')
     logger.info("Start command received")
@@ -63,7 +71,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='Markdown'
         )
     else:
-        await update.message.reply_text("❌ Please send a valid URL starting with http:// or https://")
+        await update.message.reply_text(
+            "❌ Please send a valid URL starting with http:// or https://\n\n"
+            "Try a YouTube URL like:\n"
+            "`https://www.youtube.com/watch?v=dQw4w9WgXcQ`"
+        )
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle button callbacks."""
@@ -81,7 +93,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("❌ URL expired. Please send the URL again.")
             return
         
-        await query.edit_message_text(f"⏳ Processing your {format_type.upper()}...\n\nURL: {original_url}")
+        await query.edit_message_text(f"⏳ Downloading your {format_type.upper()}...\n\nURL: {original_url}\n\nThis may take a minute...")
         
         # Download the media
         file_path = download_media(original_url, format_type)
@@ -98,16 +110,18 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
             
             if format_type == 'mp3':
-                await query.message.reply_audio(
-                    audio=open(file_path, 'rb'),
-                    caption=f"🎵 Your audio is ready!\n\nOriginal URL: {original_url}"
-                )
+                with open(file_path, 'rb') as audio_file:
+                    await query.message.reply_audio(
+                        audio=audio_file,
+                        caption=f"🎵 Your audio is ready!\n\nOriginal URL: {original_url}"
+                    )
             else:
-                await query.message.reply_video(
-                    video=open(file_path, 'rb'),
-                    caption=f"🎬 Your video is ready!\n\nOriginal URL: {original_url}",
-                    supports_streaming=True
-                )
+                with open(file_path, 'rb') as video_file:
+                    await query.message.reply_video(
+                        video=video_file,
+                        caption=f"🎬 Your video is ready!\n\nOriginal URL: {original_url}",
+                        supports_streaming=True
+                    )
             
             # Clean up
             os.remove(file_path)
@@ -120,41 +134,70 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "• Unsupported platform\n"
                 "• Network issues\n"
                 "• File too large\n\n"
-                "Try another URL."
+                "💡 *Try a YouTube URL for testing:*\n"
+                "`https://www.youtube.com/watch?v=dQw4w9WgXcQ`",
+                parse_mode='Markdown'
             )
             
     except Exception as e:
         logger.error(f"Error in button handler: {e}")
-        await query.message.reply_text("❌ Error processing your request. Please try again.")
+        await query.message.reply_text(
+            "❌ Error processing your request. Please try again.\n\n"
+            "Try a YouTube URL for testing:\n"
+            "`https://www.youtube.com/watch?v=dQw4w9WgXcQ`",
+            parse_mode='Markdown'
+        )
 
 def download_media(url, format_type):
-    """Download media using yt-dlp."""
+    """Download media using yt-dlp with platform-specific options."""
     try:
         os.makedirs('downloads', exist_ok=True)
         
-        if format_type == 'mp3':
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'outtmpl': 'downloads/%(title).50s.%(ext)s',
-                'postprocessors': [{
+        # Base options
+        ydl_opts = {
+            'outtmpl': 'downloads/%(title).50s.%(ext)s',
+            'quiet': True,
+            'no_warnings': False,
+        }
+        
+        # Platform-specific options
+        if 'pinterest.com' in url or 'pin.it' in url:
+            # Pinterest specific options
+            ydl_opts['format'] = 'best'
+        elif 'instagram.com' in url:
+            # Instagram specific options
+            ydl_opts['format'] = 'best'
+            ydl_opts['cookiefile'] = 'cookies.txt' if os.path.exists('cookies.txt') else None
+        elif 'twitter.com' in url or 'x.com' in url:
+            # Twitter/X specific options
+            ydl_opts['format'] = 'best'
+        else:
+            # Default options for YouTube and others
+            if format_type == 'mp3':
+                ydl_opts['format'] = 'bestaudio/best'
+                ydl_opts['postprocessors'] = [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
-                }],
-                'quiet': True,
-            }
-        else:
-            ydl_opts = {
-                'format': 'best[height<=480]',  # Lower quality for smaller files
-                'outtmpl': 'downloads/%(title).50s.%(ext)s',
-                'quiet': True,
-            }
+                }]
+            else:
+                ydl_opts['format'] = 'best[height<=480]/best'
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             file_path = ydl.prepare_filename(info)
             
-            if format_type == 'mp3':
+            # Convert to mp3 if needed
+            if format_type == 'mp3' and 'postprocessors' not in ydl_opts:
+                # For platforms where we couldn't set postprocessors
+                import subprocess
+                mp3_path = file_path.rsplit('.', 1)[0] + '.mp3'
+                subprocess.run(['ffmpeg', '-i', file_path, '-q:a', '0', '-map', 'a', mp3_path], 
+                              capture_output=True)
+                os.remove(file_path)
+                return mp3_path
+            
+            if format_type == 'mp3' and 'postprocessors' in ydl_opts:
                 file_path = file_path.rsplit('.', 1)[0] + '.mp3'
             
             return file_path
@@ -181,8 +224,9 @@ def main():
         
         # Start bot
         print("🤖 Bot starting...")
+        print("🤖 Bot is running and waiting for messages...")
+        print("🤖 Test with: https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         application.run_polling()
-        print("🤖 Bot is running!")
         
     except Exception as e:
         logger.error(f"Bot failed to start: {e}")
