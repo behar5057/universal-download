@@ -1,11 +1,13 @@
 import os
 import logging
 import yt_dlp
+import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
 
-# Bot configuration
-BOT_TOKEN = "8268332814:AAGhskQ16kgCieoz8BBHX6iQWxDEGt5XPxg"
+# Set token as environment variable FIRST
+os.environ['BOT_TOKEN'] = "8268332814:AAGhskQ16kgCieoz8BBHX6iQWxDEGt5XPxg"
+BOT_TOKEN = os.environ['BOT_TOKEN']
 ADMIN_ID = 6120264201
 
 # Enable logging
@@ -23,10 +25,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Send me any media URL and I'll download it!
 
 Examples:
-• YouTube: https://www.youtube.com/watch?v=...
-• Instagram: https://www.instagram.com/reel/...
-• TikTok: https://www.tiktok.com/@.../video/...
-• Twitter: https://twitter.com/.../status/...
+• YouTube: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+• Instagram: https://www.instagram.com/reel/Cx9JtVpMhQy/
+• TikTok, Twitter, Facebook, etc.
 
 ⚡ Fast • 🔒 Secure • 🆓 Free
     """
@@ -37,6 +38,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text.strip()
     
     if message_text.startswith(('http://', 'https://', 'www.')):
+        if message_text.startswith('www.'):
+            message_text = 'https://' + message_text
+        
         keyboard = [
             [
                 InlineKeyboardButton("🎬 Video", callback_data=f"video|{message_text}"),
@@ -69,23 +73,26 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if file_path and os.path.exists(file_path):
             if format_type == 'audio':
-                await query.message.reply_audio(
-                    audio=open(file_path, 'rb'),
-                    caption="🎵 Your audio is ready!"
-                )
+                with open(file_path, 'rb') as f:
+                    await query.message.reply_audio(
+                        audio=f,
+                        caption="🎵 Your audio is ready!"
+                    )
             else:
-                await query.message.reply_video(
-                    video=open(file_path, 'rb'),
-                    caption="🎬 Your video is ready!",
-                    supports_streaming=True
-                )
+                with open(file_path, 'rb') as f:
+                    await query.message.reply_video(
+                        video=f,
+                        caption="🎬 Your video is ready!",
+                        supports_streaming=True
+                    )
             os.remove(file_path)
+            print(f"✅ Successfully sent {format_type}")
         else:
-            await query.message.reply_text("❌ Download failed. Try a YouTube URL first.")
+            await query.message.reply_text("❌ Download failed. Try a YouTube URL.")
             
     except Exception as e:
         logger.error(f"Error: {e}")
-        await query.message.reply_text("❌ Error. Try: https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        await query.message.reply_text("❌ Error. Try YouTube: https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
 def download_media(url, format_type):
     """Download media using yt-dlp."""
@@ -121,16 +128,26 @@ def download_media(url, format_type):
         return None
 
 def main():
-    """Start the bot."""
-    application = Application.builder().token(BOT_TOKEN).build()
-    
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    application.add_handler(CallbackQueryHandler(button_handler))
-    
-    print("🤖 Bot is starting...")
-    application.run_polling()
-    print("🤖 Bot is running!")
+    """Start the bot with error handling."""
+    try:
+        print("🤖 Starting bot...")
+        print(f"✅ Token: {BOT_TOKEN[:10]}...")
+        
+        application = Application.builder().token(BOT_TOKEN).build()
+        
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        application.add_handler(CallbackQueryHandler(button_handler))
+        
+        print("🤖 Bot is running! Waiting for messages...")
+        application.run_polling()
+        
+    except Exception as e:
+        print(f"❌ Bot failed: {e}")
+        print("🔄 Restarting in 5 seconds...")
+        time.sleep(5)
+        main()
 
 if __name__ == '__main__':
+    import time
     main()
