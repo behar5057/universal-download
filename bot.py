@@ -53,26 +53,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = """
 🎬 *UNIVERSAL DOWNLOADER BOT* 🎵
 
-I can download ANYTHING from ANY platform:
-• Videos (YouTube, Instagram, TikTok, Facebook, Twitter, etc.)
-• Music/MP3 from any video
-• Pictures/Photos
-• Reels, Stories, Posts
-• And much more!
+I can download ANYTHING from ANY platform!
 
 📝 *How to use:*
-Just send me ANY media URL and I'll download it for you!
+1. Send me ANY media URL
+2. Choose download option
+3. Get your file!
+
+✅ *Working Platforms:*
+• YouTube (Videos & MP3)
+• Instagram (Reels, Posts, Stories)
+• TikTok (Videos)
+• Twitter/X (Videos, Images)
+• Facebook (Videos)
+• Pinterest (Images)
+• Reddit (Videos, Images)
+• SoundCloud (Music)
+• And 1000+ more sites!
 
 ⚡ Fast • 🔒 Secure • 🆓 Free
-
-🔗 *Examples:*
-- YouTube: https://www.youtube.com/watch?v=...
-- Instagram: https://www.instagram.com/p/... or /reel/...
-- TikTok: https://www.tiktok.com/@.../video/...
-- Twitter: https://twitter.com/.../status/...
-- Facebook: https://facebook.com/watch/?v=...
-- Pinterest: https://pinterest.com/pin/...
-- Reddit: https://reddit.com/r/.../comments/...
     """
     await update.message.reply_text(welcome_text, parse_mode='Markdown')
     logger.info("Start command received")
@@ -80,44 +79,38 @@ Just send me ANY media URL and I'll download it for you!
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle incoming messages containing URLs."""
     message_text = update.message.text.strip()
-    logger.info(f"Received: {message_text}")
+    logger.info(f"Received URL: {message_text}")
     
     # Check if it's a URL
-    if any(prefix in message_text for prefix in ['http://', 'https://', 'www.']):
+    if message_text.startswith(('http://', 'https://', 'www.')):
+        # Clean the URL
+        if message_text.startswith('www.'):
+            message_text = 'https://' + message_text
+        
         url_hash = get_url_hash(message_text)
         user_urls[url_hash] = message_text
         
-        # Create download options based on URL type
-        keyboard = []
-        
-        # Always offer MP4/Video option
-        keyboard.append([InlineKeyboardButton("🎬 Download Video", callback_data=f"video|{url_hash}")])
-        
-        # Offer MP3 for platforms that likely have audio
-        if any(platform in message_text for platform in ['youtube', 'youtu.be', 'instagram', 'tiktok', 'facebook', 'twitter', 'soundcloud']):
-            keyboard.append([InlineKeyboardButton("🎵 Download MP3/Audio", callback_data=f"audio|{url_hash}")])
-        
-        # Offer Image option for image platforms
-        if any(platform in message_text for platform in ['instagram.com/p/', 'pinterest', 'imgur', 'flickr']):
-            keyboard.append([InlineKeyboardButton("🖼️ Download Image", callback_data=f"image|{url_hash}")])
-        
-        # Best quality option
-        keyboard.append([InlineKeyboardButton("⭐ Best Quality", callback_data=f"best|{url_hash}")])
+        # Create download options
+        keyboard = [
+            [InlineKeyboardButton("🎬 Download Video", callback_data=f"video|{url_hash}")],
+            [InlineKeyboardButton("🎵 Download MP3/Audio", callback_data=f"audio|{url_hash}")],
+            [InlineKeyboardButton("🖼️ Try Download", callback_data=f"try|{url_hash}")]
+        ]
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.message.reply_text(
-            f"📥 *Download Options*\n\nURL: `{message_text}`\n\nChoose what you want to download:",
+            f"📥 *URL Received*\n\n`{message_text}`\n\nChoose download option:",
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
     else:
         await update.message.reply_text(
-            "❌ Please send a valid URL starting with http:// or https://\n\n"
+            "❌ Please send a valid URL.\n\n"
             "Examples:\n"
             "• https://www.youtube.com/watch?v=dQw4w9WgXcQ\n"
-            "• https://www.instagram.com/reel/...\n"
-            "• https://www.tiktok.com/@.../video/...",
+            "• https://www.instagram.com/reel/Cx9JtVpMhQy/\n"
+            "• https://twitter.com/.../status/...",
             parse_mode='Markdown'
         )
 
@@ -132,92 +125,160 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         original_url = user_urls.get(url_hash)
         
         if not original_url:
-            await query.edit_message_text("❌ URL expired. Please send the URL again.")
+            await query.edit_message_text("❌ URL expired. Please send it again.")
             return
         
         format_names = {
             'video': 'Video',
             'audio': 'Audio/MP3', 
-            'image': 'Image',
-            'best': 'Best Quality'
+            'try': 'Media'
         }
         
-        await query.edit_message_text(f"⏳ Downloading {format_names.get(format_type, format_type)}...\n\nURL: {original_url}")
+        await query.edit_message_text(f"🔄 *Downloading {format_names.get(format_type, format_type)}...*\n\n`{original_url}`\n\n⏳ Please wait...", parse_mode='Markdown')
         
-        # Download the media
-        file_path = download_media(original_url, format_type)
+        # Download the media with multiple attempts
+        file_path = None
+        error_msg = None
+        
+        if format_type == 'try':
+            # Try multiple approaches
+            for attempt in ['video', 'audio', 'image']:
+                file_path = download_media(original_url, attempt)
+                if file_path and os.path.exists(file_path):
+                    format_type = attempt
+                    break
+        
+        if not file_path:
+            file_path = download_media(original_url, format_type)
         
         if file_path and os.path.exists(file_path):
             file_size = os.path.getsize(file_path) / (1024 * 1024)  # Size in MB
             
-            # Check file size limit (50MB for Telegram)
+            # Check file size
             if file_size > 50:
                 await query.message.reply_text(
                     f"❌ File too large ({file_size:.1f}MB). Telegram limit is 50MB.\n"
-                    f"Try downloading audio or lower quality."
+                    f"Try downloading audio instead."
                 )
                 os.remove(file_path)
                 return
             
-            # Send based on file type
-            if file_path.endswith('.mp3') or file_path.endswith('.m4a'):
-                with open(file_path, 'rb') as audio_file:
-                    await query.message.reply_audio(
-                        audio=audio_file,
-                        caption=f"🎵 Your audio is ready!\n\n🔗 {original_url}"
-                    )
-            elif file_path.endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')):
-                with open(file_path, 'rb') as image_file:
-                    await query.message.reply_photo(
-                        photo=image_file,
-                        caption=f"🖼️ Your image is ready!\n\n🔗 {original_url}"
-                    )
-            else:  # Video or other files
-                with open(file_path, 'rb') as media_file:
-                    await query.message.reply_document(
-                        document=media_file,
-                        caption=f"📁 Your media is ready!\n\n🔗 {original_url}"
-                    )
+            # Send the file
+            await send_file(query.message, file_path, original_url, format_type)
             
             # Clean up
             os.remove(file_path)
             logger.info(f"Successfully sent {format_type}")
             
         else:
-            await query.message.reply_text(
-                "❌ Download failed. This might be due to:\n"
-                "• Private/restricted content\n"
-                "• Unsupported platform\n"
-                "• Network issues\n"
-                "• File too large\n\n"
-                "Try another URL or platform.",
-                parse_mode='Markdown'
-            )
+            # Try direct download as last resort
+            await query.message.reply_text("🔄 Trying alternative download method...")
+            file_path = direct_download(original_url)
+            
+            if file_path and os.path.exists(file_path):
+                await send_file(query.message, file_path, original_url, 'direct')
+                os.remove(file_path)
+            else:
+                await query.message.reply_text(
+                    "❌ *Could not download this content*\n\n"
+                    "Possible reasons:\n"
+                    "• Content is private/restricted\n"
+                    "• Platform blocks downloads\n"
+                    "• URL format not supported\n"
+                    "• Server timeout\n\n"
+                    "💡 *Try:*\n"
+                    "1. Different URL from same platform\n"
+                    "2. YouTube URLs work best\n"
+                    "3. Check if content is public\n"
+                    "4. Try again later",
+                    parse_mode='Markdown'
+                )
             
     except Exception as e:
-        logger.error(f"Error in button handler: {e}")
+        logger.error(f"Error: {e}")
         await query.message.reply_text(
-            "❌ Error processing your request. Please try again with a different URL.",
+            "❌ *Download Error*\n\n"
+            "Please try:\n"
+            "1. A different URL\n"
+            "2. YouTube video (most reliable)\n"
+            "3. Check your internet connection",
             parse_mode='Markdown'
         )
 
+async def send_file(message, file_path, original_url, format_type):
+    """Send file based on its type."""
+    try:
+        file_ext = os.path.splitext(file_path)[1].lower()
+        
+        if file_ext in ['.mp3', '.m4a', '.ogg', '.wav']:
+            with open(file_path, 'rb') as f:
+                await message.reply_audio(
+                    audio=f,
+                    caption=f"🎵 *Audio Downloaded*\n🔗 {original_url}",
+                    parse_mode='Markdown'
+                )
+        elif file_ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']:
+            with open(file_path, 'rb') as f:
+                await message.reply_photo(
+                    photo=f,
+                    caption=f"🖼️ *Image Downloaded*\n🔗 {original_url}",
+                    parse_mode='Markdown'
+                )
+        elif file_ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
+            with open(file_path, 'rb') as f:
+                await message.reply_video(
+                    video=f,
+                    caption=f"🎬 *Video Downloaded*\n🔗 {original_url}",
+                    supports_streaming=True,
+                    parse_mode='Markdown'
+                )
+        else:
+            with open(file_path, 'rb') as f:
+                await message.reply_document(
+                    document=f,
+                    caption=f"📁 *File Downloaded*\n🔗 {original_url}",
+                    parse_mode='Markdown'
+                )
+                
+    except Exception as e:
+        logger.error(f"Send error: {e}")
+        # Try as document if other methods fail
+        with open(file_path, 'rb') as f:
+            await message.reply_document(
+                document=f,
+                caption=f"📁 Downloaded: {original_url}"
+            )
+
 def download_media(url, format_type):
-    """Download media using yt-dlp with universal settings."""
+    """Download media using yt-dlp with multiple fallbacks."""
     try:
         os.makedirs('downloads', exist_ok=True)
         
-        # Universal downloader options
+        # Base options
         ydl_opts = {
-            'outtmpl': 'downloads/%(title).100s.%(ext)s',
+            'outtmpl': 'downloads/%(title).80s.%(ext)s',
             'quiet': True,
-            'no_warnings': False,
-            'format': 'best',  # Get the best available
-            'merge_output_format': 'mp4',
-            'windowsfilenames': True,
-            'restrictfilenames': True,
+            'no_warnings': True,
+            'ignoreerrors': True,
+            'no_check_certificate': True,
+            'extractor_args': {
+                'instagram': {
+                    'requested_formats': ['dash', 'hls'],
+                    'posts': 'single',
+                },
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://www.google.com/',
+            },
         }
         
-        # Special handling for different formats
+        # Format specific options
         if format_type == 'audio':
             ydl_opts.update({
                 'format': 'bestaudio/best',
@@ -227,72 +288,83 @@ def download_media(url, format_type):
                     'preferredquality': '192',
                 }],
             })
+        elif format_type == 'video':
+            ydl_opts.update({
+                'format': 'best[height<=720]/best[ext=mp4]/best',
+                'merge_output_format': 'mp4',
+            })
         elif format_type == 'image':
             ydl_opts.update({
                 'format': 'best[ext=jpg]/best[ext=png]/best[ext=webp]/best',
             })
-        elif format_type == 'video':
-            ydl_opts.update({
-                'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best',
-            })
-        elif format_type == 'best':
-            ydl_opts.update({
-                'format': 'bestvideo+bestaudio/best',
-            })
+        else:
+            ydl_opts['format'] = 'best'
         
-        # Platform-specific optimizations
+        # Platform specific tweaks
         if 'instagram.com' in url:
             ydl_opts.update({
+                'format': 'best',
                 'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
             })
-        elif 'twitter.com' in url or 'x.com' in url:
+        elif 'tiktok.com' in url:
             ydl_opts.update({
                 'format': 'best',
             })
-        elif 'tiktok.com' in url:
+        elif 'twitter.com' in url or 'x.com' in url:
             ydl_opts.update({
                 'format': 'best',
             })
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            
+            if not info:
+                return None
+                
             file_path = ydl.prepare_filename(info)
             
-            # Handle audio conversion
+            # Convert to mp3 if audio was requested
             if format_type == 'audio' and 'postprocessors' in ydl_opts:
-                file_path = file_path.rsplit('.', 1)[0] + '.mp3'
+                mp3_path = file_path.rsplit('.', 1)[0] + '.mp3'
+                if os.path.exists(mp3_path):
+                    return mp3_path
             
-            return file_path
+            return file_path if os.path.exists(file_path) else None
             
     except Exception as e:
-        logger.error(f"Download error for {url}: {e}")
-        
-        # Try a simpler approach if the first one fails
-        try:
-            return simple_download(url, format_type)
-        except:
-            return None
+        logger.error(f"Download error: {e}")
+        return None
 
-def simple_download(url, format_type):
-    """Simple download as fallback."""
+def direct_download(url):
+    """Try direct download as last resort."""
     try:
+        import random
+        import string
+        
         os.makedirs('downloads', exist_ok=True)
         
-        simple_opts = {
-            'outtmpl': 'downloads/%(title)s.%(ext)s',
+        # Generate random filename
+        filename = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+        file_path = f"downloads/{filename}.mp4"
+        
+        # Use yt-dlp with simplest options
+        ydl_opts = {
+            'outtmpl': file_path,
             'format': 'best',
+            'quiet': True,
         }
         
-        with yt_dlp.YoutubeDL(simple_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            return ydl.prepare_filename(info)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+            return file_path if os.path.exists(file_path) else None
+            
     except:
         return None
 
 def main():
     """Start everything."""
     print("🚀 Starting Universal Downloader Bot...")
-    print("📥 Can download: Videos, Music, Images from ANY platform!")
+    print("📥 Will try multiple methods to download ANYTHING!")
     
     # Start keep-alive thread
     keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
@@ -311,7 +383,7 @@ def main():
     application.add_handler(CallbackQueryHandler(button_handler))
     
     # Start bot
-    print("🤖 Bot is running! Send ANY URL to download.")
+    print("🤖 Bot is running! Testing with YouTube...")
     print("🌐 Web server: https://universal-download.onrender.com")
     application.run_polling()
 
